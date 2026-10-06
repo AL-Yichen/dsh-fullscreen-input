@@ -1294,6 +1294,53 @@ const EMPTY_IDS = []
 const NO_DRAG = { x: 0, y: 0 }
 
 /**
+ * How much of the panel has to stay on screen, in CSS pixels.
+ *
+ * Moving was left unbounded by request — but that was agreed when the position
+ * was never remembered. Once it *is* remembered, unbounded movement becomes a
+ * trap: drag the header past the edge, and the panel reopens off-screen forever,
+ * with a reload making it worse by restoring the same bad offset. Keeping a strip
+ * on screen costs the user nothing and removes the dead end entirely.
+ */
+const MIN_VISIBLE_X = 120
+const MIN_VISIBLE_Y = 48
+
+/** The pane's size, falling back to the sheet's responsive default. */
+function currentPanelSize(size) {
+  if (size !== null && size !== undefined) return size
+  // Mirrors the sheet's `min(920px,100%)` / `min(76vh,720px)`. Duplicated on
+  // purpose: clamping needs a number, and reading layout back would tie this to
+  // a specific moment in the render.
+  return {
+    w: Math.min(920, window.innerWidth),
+    h: Math.min(window.innerHeight * 0.76, 720),
+  }
+}
+
+/**
+ * Pull a drag offset back until enough of the panel is on screen.
+ *
+ * The pane is centred by a flex box, so its edges sit at `(viewport - size) / 2`
+ * plus the offset; the clamp is expressed in edge terms and converted back, which
+ * keeps it correct at any size or window dimension.
+ */
+function clampOffset(offset, size) {
+  const viewportW = window.innerWidth
+  const viewportH = window.innerHeight
+  const { w, h } = currentPanelSize(size)
+  const left = (viewportW - w) / 2 + offset.x
+  const top = (viewportH - h) / 2 + offset.y
+  // The header sits at the top edge, so the top is the edge that must not escape;
+  // horizontally either side may hang off as long as a strip remains.
+  const clampedLeft = Math.min(viewportW - MIN_VISIBLE_X, Math.max(MIN_VISIBLE_X - w, left))
+  const clampedTop = Math.min(viewportH - MIN_VISIBLE_Y, Math.max(0, top))
+  return {
+    x: Math.round(offset.x + (clampedLeft - left)),
+    y: Math.round(offset.y + (clampedTop - top)),
+  }
+}
+
+/**
  * Whether the intro dialog has been shown since this bundle loaded.
  *
  * Deliberately **not** persisted. The dialog's "do not show again" box is what
@@ -1716,7 +1763,13 @@ function FullscreenInputDock(props) {
   // it; otherwise it starts centred and is reset every time the panel is hidden.
   const [dragOffset, setDragOffset] = React.useState(
     () => (currentSettings.rememberPosition
-      ? { x: currentSettings.panelOffsetX, y: currentSettings.panelOffsetY }
+      // Clamped on the way in. A stored offset can be unusable for reasons the
+      // user never chose: a window that is now smaller, or a build from before
+      // the clamp existed. Neither should be able to strand the panel.
+      ? clampOffset(
+        { x: currentSettings.panelOffsetX, y: currentSettings.panelOffsetY },
+        storedPanelSize(),
+      )
       : NO_DRAG),
   )
   // Read on release rather than captured, so the persist call stays out of the
@@ -1777,10 +1830,12 @@ function FullscreenInputDock(props) {
   const onHeadPointerMove = React.useCallback((event) => {
     const drag = dragRef.current
     if (drag === null || drag.pointerId !== event.pointerId) return
-    setDragOffset({
+    // Clamped while dragging rather than on release, so the panel simply refuses
+    // to go further instead of snapping back after the fact.
+    setDragOffset(clampOffset({
       x: drag.originX + (event.clientX - drag.startX),
       y: drag.originY + (event.clientY - drag.startY),
-    })
+    }, sizeRef.current))
   }, [])
 
   const onHeadPointerUp = React.useCallback((event) => {
@@ -1882,12 +1937,12 @@ function FullscreenInputDock(props) {
     // being dragged from both sides". The sign flips with the direction.
     const signX = (dir.includes('e') ? 1 : 0) - (dir.includes('w') ? 1 : 0)
     const signY = (dir.includes('s') ? 1 : 0) - (dir.includes('n') ? 1 : 0)
-    if (signX !== 0 || signY !== 0) {
-      setDragOffset({
-        x: drag.startOffsetX + (signX * (w - drag.startW)) / 2,
-        y: drag.startOffsetY + (signY * (h - drag.startH)) / 2,
-      })
-    }
+    // Growing the pane pushes its top edge upward, so a resize can strand the panel
+    // off-screen exactly as a drag can — hence the clamp here too.
+    setDragOffset(clampOffset({
+      x: drag.startOffsetX + (signX * (w - drag.startW)) / 2,
+      y: drag.startOffsetY + (signY * (h - drag.startH)) / 2,
+    }, { w, h }))
   }, [])
 
   const onResizePointerUp = React.useCallback((event) => {
@@ -1946,7 +2001,10 @@ function FullscreenInputDock(props) {
   React.useEffect(() => {
     if (open) return
     setDragOffset(settings.rememberPosition
-      ? { x: settings.panelOffsetX, y: settings.panelOffsetY }
+      ? clampOffset(
+        { x: settings.panelOffsetX, y: settings.panelOffsetY },
+        storedPanelSize(),
+      )
       : NO_DRAG)
     // Same shape for the size, so flipping either switch has an immediate,
     // matching effect the next time the panel is opened.
