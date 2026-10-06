@@ -2,6 +2,12 @@
 
 本文件记录本插件的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 内部实现
+
+- **`wheel` 监听器的 add / remove 参数恢复对称。** 移除时补上 `{ passive: false }`。**行为没有任何变化**：`removeEventListener` 的匹配只看 type、callback 与 capture 三项，`passive` 不参与比较，所以此前一直是正确移除的——但这处不对称为全文件唯一，读代码的人会在这里停下来查规范（作者本人就为此做了一次实测）。四处监听器现在写法一致。
+
 ## [1.1.0] - 2026-10-07
 
 ### 修复
