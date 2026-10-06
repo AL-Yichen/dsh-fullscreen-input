@@ -33,7 +33,7 @@ npm run check             # node --check 三个文件
 
 ---
 
-## 五条不能碰的约束
+## 六条不能碰的约束
 
 改动前务必读完这一节。每一条都是踩过的坑。
 
@@ -93,6 +93,20 @@ conversation.resolveDraftAttachments(ids)   // → ComposerAttachment[]
 | 面板内粘贴 | 构造 `DataTransfer` 赋给同一个 input，再派发 `change` |
 
 **绝不使用哈希类名**（宿主每次构建都会变）。找不到就**什么都不做**——宁可功能缺失，也不要一个会崩的面板。
+
+### 6. 不要用 JS 解析宿主的颜色 token
+
+玻璃颜色的「跟随主题」曾经用 JS 探针读出 `--dsw-alias-bg-layer-1` 再解析成 hex，而解析正则只认 `rgb()` / `rgba()`。真机上这个 token 的计算值是：
+
+```
+color(srgb 0.109804 0.109804 0.109804 / 0.659187)
+```
+
+—— **CSS Color 4 格式**（带 `/ alpha`，老语法根本写不出来）。匹配失败后代码回退到 `#ffffff`，而它**正好等于「白色」那个预设**，于是「跟随主题」和「白色」画出完全相同的面板。
+
+现在填充值发布为自定义属性 `--dshfs-fill`，由 **CSS** 解析：theme 走 `color-mix(in srgb, var(--dsw-alias-bg-layer-1,#fff) N%, transparent)`，固定色走字面 `rgba()`；样式表用 `var(--dshfs-fill, var(--dsw-alias-bg-layer-1,#fff))` 兜底，所以 `color-mix` 不被支持时仍会回退到纯主题色。
+
+**规则**：宿主的颜色 token 一律交给 CSS，不要在 JS 里读出来再拼字符串。格式会变，而「解析失败时的静默回退值」往往**恰好是另一个合法选项**——于是 bug 看起来像功能正常。
 
 ---
 

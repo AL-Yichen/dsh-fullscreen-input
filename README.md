@@ -39,7 +39,7 @@ git clone <本仓库> dsh-fullscreen-input
 dsh plugin --profile web add link:<克隆下来的绝对路径>
 ```
 
-Windows 例：`link:E:/A-Programming/VibeCoding/dsh-fullscreen-input`
+Windows 例：`link:D:/example/dsh-fullscreen-input`
 
 因为是 `link:` 安装，改完源码跑一次 `node build-client.mjs` 重建，**刷新页面即生效**，不用重装。
 
