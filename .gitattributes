@@ -1,0 +1,14 @@
+# Keep every text file LF in the repository.
+#
+# These sources are read by Node and served to the browser; a CRLF round-trip
+# through a Windows editor would otherwise show up as a whole-file diff on the
+# next commit and obscure what actually changed.
+* text=auto eol=lf
+
+# Binary assets, in case any are added later.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.mp4 binary
+*.ico binary
+*.zstd binary

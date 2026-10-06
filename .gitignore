@@ -1,0 +1,13 @@
+# Node / 包管理
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# 编辑器与系统噪音
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

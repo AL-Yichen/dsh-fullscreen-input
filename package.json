@@ -1,0 +1,52 @@
+{
+  "name": "dsh-fullscreen-input",
+  "version": "1.0.0",
+  "description": "全屏输入面板：输入框工具栏上的一个图标，点开后在全屏窗口里写多行文本。Enter 只换行、仅 Ctrl+Enter（或点右下角发送按钮）才提交，彻底绕开中文输入法下 Shift+Enter 被误判成发送的问题。面板与主输入框共享同一份草稿——引用、附件、粘贴、拖放都与它一致，Esc 关闭不丢内容。",
+  "license": "MIT",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "cordis.patch.yml",
+    "build-client.mjs",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "composer",
+    "ime",
+    "input",
+    "fullscreen",
+    "multiline"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.0-rc.1"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "node build-client.mjs",
+    "check": "node --check lib/client.js && node --check lib/index.js && node --check src/client.js"
+  }
+}
