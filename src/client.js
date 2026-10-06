@@ -113,7 +113,7 @@ const DICT = {
     'settings.showHint.button': '查看提示',
     'hint.title': '全屏输入 · 使用提示',
     'hint.reset': '双击面板顶部的标题栏，可把面板恢复到默认位置与默认大小。',
-    'hint.settings': '更多设置（遮罩、毛玻璃、大小与位置记忆、唤起快捷键）请点击面板右上角的齿轮图标，打开「全屏输入设置」查看。',
+    'hint.settings': '更多设置（遮罩、毛玻璃、大小与位置记忆、唤起快捷键）请点击面板右上角的小太阳图标，打开「全屏输入设置」查看。',
     'hint.mute': '不再提示',
     'hint.ok': '关闭',
     'hint.close': '关闭提示',
@@ -168,7 +168,7 @@ const DICT = {
     'settings.showHint.button': 'Show tips',
     'hint.title': 'Full-screen input · Getting started',
     'hint.reset': 'Double-click the panel header to restore its default position and size.',
-    'hint.settings': 'For more — mask, frosted glass, remembering size and position, summon shortcut — open Full-screen input settings from the gear at the top right of the panel.',
+    'hint.settings': 'For more — mask, frosted glass, remembering size and position, summon shortcut — open Full-screen input settings from the sun icon at the top right of the panel.',
     'hint.mute': "Don't show again",
     'hint.ok': 'Close',
     'hint.close': 'Close tips',
@@ -345,7 +345,12 @@ const CSS = [
   '.dshfs-settings-layer{position:absolute;inset:0;z-index:1;display:flex;',
   'align-items:center;justify-content:center;padding:24px;box-sizing:border-box}',
   '.dshfs-settings{--dshfs-accent:#7aaaff;display:flex;flex-direction:column;width:min(460px,100%);',
-  'max-height:100%;box-sizing:border-box;overflow:hidden;cursor:default;',
+  // `min-height:0` is load-bearing, not decoration. This is a flex item, and a
+  // flex item's default `min-height:auto` refuses to shrink below its content —
+  // which silently overrides `max-height` and lets a long settings list grow the
+  // dialog past the pane, clipping both ends. The body below needs the same
+  // treatment for the same reason.
+  'max-height:100%;min-height:0;box-sizing:border-box;overflow:hidden;cursor:default;',
   'border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.28));border-radius:14px;',
   'background:var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,#fff));',
   'box-shadow:0 18px 48px rgba(0,0,0,.34)}',
@@ -849,8 +854,13 @@ function SendGlyph() {
 }
 
 /**
- * The settings gear, drawn as the eight-tooth cog the shell's own gear uses -
+ * The settings gear, drawn as the eight-tooth cog the shell's own gear uses —
  * same 16px grid, same 1.3px product stroke weight as the Medium product icons.
+ *
+ * Note for future edits: at this size eight teeth read as a **sun**, not a cog.
+ * That is what users see and what the copy says ("小太阳" / "sun icon"), so a
+ * change to a more literal gear shape has to update the strings and the README
+ * with it — or leave both alone.
  */
 function GearGlyph() {
   return React.createElement(
