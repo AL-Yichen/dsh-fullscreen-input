@@ -20,9 +20,9 @@ DSH's own composer decides whether `Shift+Enter` inserts a newline or sends by l
 
 ## Install
 
-### From the plugin market (recommended)
+### From the plugins panel (recommended)
 
-Open DSH's **Settings → Plugin Market**, search for `dsh-fullscreen-input`, and install.
+Open the **Plugins** page in DSH's sidebar, click **Add plugin**, type the package name `dsh-fullscreen-input`, and install.
 
 ### Command line
 
