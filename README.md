@@ -92,9 +92,23 @@ Windows 例：`link:D:/example/dsh-fullscreen-input`
 
 ## 兼容性
 
-- **DSH ≥ 0.2.0-rc.1**
+- **DSH `>=0.2.0-rc.1 <0.3.0-0`**（即 0.2.x 发行线）。面板深度依赖宿主的槽位 props、`inputActions` 与 `insertReference` 的 revision-CAS 语义，这些正是次要版本最可能变动的地方，所以上界是刻意收窄的——旧版声明的 `≥ 0.2.0-rc.1` 会无声地宣称兼容未来的 `0.3.0+`。
 - **Node ≥ 20**（仅构建源码时需要）
 - 纯浏览器侧插件：host 侧是空实现，**不产生任何网络请求**，不读写会话数据
+
+## 权限
+
+本插件**不需要**任何权限档位、审批放宽或沙箱调整即可工作。它请求的能力面刻意保持在最小：
+
+| 能力 | 用途 |
+|---|---|
+| `ctx.effect` | 注册样式表与 locale 字典的清理（卸载时完整回滚，无残留） |
+| `ctx.inject(['slots','locale','sessions','conversation'])` | 等待并取得这四个服务；全部是读取或驱动宿主自己的输入动作 |
+| `slots.inject` + `slots.register` | 往 `conversation.input.left` 槽位贡献一个工具栏按钮 |
+
+**未使用**：`ctx.fs`、`ctx.network`、`ctx.shell`、`ctx.resources`。它不注册任何 Agent 工具，因此不会扩展模型的工具面。
+
+唯一的本机持久化是一个 `localStorage` 键（面板外观偏好）；唯一接触文件的路径是驱动宿主**自己的**隐藏文件输入框，且请求文件对话框必须在你的点击或粘贴手势内完成。完整的攻击面说明与漏洞报告方式见 [SECURITY.md](./SECURITY.md)。
 
 ## 改源码
 

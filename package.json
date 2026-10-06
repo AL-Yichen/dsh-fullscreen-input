@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "全屏输入面板：输入框工具栏上的一个图标，点开后在全屏窗口里写多行文本。Enter 只换行、仅 Ctrl+Enter（或点右下角发送按钮）才提交，彻底绕开中文输入法下 Shift+Enter 被误判成发送的问题。面板与主输入框共享同一份草稿——引用、附件、粘贴、拖放都与它一致，Esc 关闭不丢内容。",
   "license": "MIT",
+  "author": "AL_Yichen <alyichen0815@gmail.com>",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -18,8 +19,18 @@
     "build-client.mjs",
     "README.md",
     "AGENTS.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
     "LICENSE"
   ],
+  "homepage": "https://github.com/AL-Yichen/dsh-fullscreen-input#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AL-Yichen/dsh-fullscreen-input.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AL-Yichen/dsh-fullscreen-input/issues"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -35,14 +46,21 @@
     "node": ">=20"
   },
   "dsh": {
+    "manifestVersion": 1,
     "engines": {
-      "dsh": ">=0.2.0-rc.1"
+      "dsh": ">=0.2.0-rc.1 <0.3.0-0"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
     "client": {
-      "platform": "web"
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
     }
   },
   "scripts": {
