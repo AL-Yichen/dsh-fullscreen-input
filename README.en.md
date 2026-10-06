@@ -73,7 +73,7 @@ A new icon appears in the composer's tool row (the line with the "+" button); ho
 | **See references** | `@` references in the draft appear as labelled entries; hover for the full path |
 | **See attachments** | images show as thumbnails — **click to enlarge**; files show a type icon and name |
 | **Remove an attachment** | hover it; an "×" appears in the corner |
-| **Remove a reference** | a file reference (`@path`) gets the same "×". It deletes **that text from the draft** — a reference is not an attachment, so selecting the text in the box and deleting it works just as well |
+| **Remove a reference** | a file reference (`@path`) gets the same "×". It deletes **that text from the draft** — a reference is not an attachment, so selecting the text in the box and deleting it works just as well. The box loses focus to the button afterwards; click back into it to keep typing |
 | **Add files** | the "+" at the bottom left, which drives DSH's own file picker |
 | **Paste** | `Ctrl+V` inside the panel; images and files both work |
 | **Drag and drop** | drop files straight onto the panel |
