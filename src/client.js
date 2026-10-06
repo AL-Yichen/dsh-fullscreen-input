@@ -1847,7 +1847,8 @@ function FullscreenInputDock(props) {
 function contribute(ctx) {
   const removeSheet = installSheet()
   if (removeSheet !== null) {
-    sheetInstalled = true
+    // No "already installed" flag is kept: `installSheet` decides that itself by
+    // looking for the tag, so a flag here would be written and never read.
     ctx.effect(() => removeSheet, 'dsh-fullscreen-input: panel sheet teardown')
   }
 
