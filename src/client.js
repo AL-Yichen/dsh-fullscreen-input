@@ -1587,29 +1587,63 @@ function planReferenceRemoval(text, occurrence) {
   if (at < 0) return null
 
   const end = at + needle.length
-  // `charAt` returns '' past either end, which is exactly the "start of the
-  // string" / "end of the string" the line test needs.
-  const before = text.charAt(at - 1)
-  const after = text.charAt(end)
-  const ownsLine = (before === '' || before === '\n') && (after === '' || after === '\n')
+  // A reference "owns" its line when nothing but whitespace shares that line --
+  // which is how it reads on screen, and the only reading that survives the
+  // host's own habit of parking a separating space after a chip. Looking one
+  // character either side is not enough: `@a.ts \n` reads as an inline reference
+  // to that test, and removing only the reference then leaves the space behind
+  // as the blank line the user sees.
+  const lineStart = text.lastIndexOf('\n', at - 1) + 1
+  const newlineAt = text.indexOf('\n', end)
+  const lineEnd = newlineAt < 0 ? text.length : newlineAt
+  const alone = text.slice(lineStart, at).trim() === '' && text.slice(end, lineEnd).trim() === ''
 
-  if (!ownsLine) {
-    const joined = text.slice(0, at) + text.slice(end)
-    // `see @a.ts here` -> `see  here`: the reference took one space with it and
-    // left the other behind, so one of the pair goes too.
-    if (at > 0 && joined.charAt(at - 1) === ' ' && joined.charAt(at) === ' ') {
-      return joined.slice(0, at) + joined.slice(at + 1)
-    }
-    return joined
+  if (alone) {
+    // Take the line's newline with it, so no blank line is left behind. The
+    // trailing newline goes first; the last line of the draft has to give up the
+    // one before it instead (and a draft that was only this line becomes empty).
+    if (newlineAt >= 0) return text.slice(0, lineStart) + text.slice(newlineAt + 1)
+    return text.slice(0, Math.max(0, lineStart - 1))
   }
 
-  // Prefer the newline that follows, so a reference at the top of the draft
-  // leaves the rest starting where it did. The one before it is only taken when
-  // there is no trailing newline to take -- the last line of the draft.
-  if (after === '\n') return text.slice(0, at) + text.slice(end + 1)
-  if (before === '\n') return text.slice(0, at - 1)
-  // The whole draft was this one reference, so it becomes empty.
-  return ''
+  const joined = text.slice(0, at) + text.slice(end)
+  // `see @a.ts here` -> `see  here`: the reference took one space with it and
+  // left the other behind, so one of the pair goes too.
+  if (at > 0 && joined.charAt(at - 1) === ' ' && joined.charAt(at) === ' ') {
+    return joined.slice(0, at) + joined.slice(at + 1)
+  }
+  return joined
+}
+
+/**
+ * Where the caret belongs once `from` has become `to`.
+ *
+ * A programmatic write replaces the textarea's value, and the browser then puts
+ * the caret wherever it likes — which is how a remove button moved the caret
+ * into the middle of the draft, so that the user's very next keystroke landed
+ * somewhere they never pointed at. Mapping the old caret through the edit is
+ * exact and cheap: a caret before the change stays put, one after it shifts by
+ * the length difference, and one inside it lands at the start of what changed.
+ *
+ * Returns null when the control has no usable caret (never focused, or on its
+ * way out), and the caller then leaves the selection alone.
+ */
+function caretAfterRemoval(from, to, node) {
+  const had = node === null || node === undefined ? null : node.selectionStart
+  if (typeof had !== 'number' || !Number.isFinite(had)) return null
+  // The common head is untouched, and the common tail only shifts.
+  let head = 0
+  const shortest = Math.min(from.length, to.length)
+  while (head < shortest && from.charAt(head) === to.charAt(head)) head += 1
+  let tailFrom = from.length
+  let tailTo = to.length
+  while (tailFrom > head && tailTo > head && from.charAt(tailFrom - 1) === to.charAt(tailTo - 1)) {
+    tailFrom -= 1
+    tailTo -= 1
+  }
+  if (had <= head) return had
+  if (had >= tailFrom) return had - (tailFrom - head) + (tailTo - head)
+  return head
 }
 
 /** The host's own reference glyph when primitives is available, else a text stand-in. */
@@ -2297,6 +2331,9 @@ function FullscreenInputDock(props) {
   /** Chips photographed just before a write flattened them; consumed by the effect below. */
   const pendingRestoreRef = React.useRef(null)
 
+  /** Caret to restore after the next programmatic write; null means "leave it". */
+  const caretAfterWriteRef = React.useRef(null)
+
   /**
    * Write the whole draft through the composer's own action face.
    *
@@ -2358,10 +2395,31 @@ function FullscreenInputDock(props) {
     (occurrence) => {
       const next = planReferenceRemoval(draft, occurrence)
       if (next === null) return
+      // Remember where the caret should land before the value is replaced: a
+      // programmatic write otherwise lets the browser choose, and the choice it
+      // makes is what put the caret in the middle of the draft.
+      caretAfterWriteRef.current = caretAfterRemoval(draft, next, textRef.current)
       writeDraft(next)
     },
     [draft, writeDraft],
   )
+
+  // Apply that caret once React has committed the new value. `setSelectionRange`
+  // does not steal focus, so a user who is clicking through several removals
+  // keeps whatever focus they had.
+  React.useLayoutEffect(() => {
+    const want = caretAfterWriteRef.current
+    if (want === null) return
+    caretAfterWriteRef.current = null
+    const node = textRef.current
+    if (node === null || node === undefined) return
+    const at = Math.max(0, Math.min(want, node.value.length))
+    try {
+      node.setSelectionRange(at, at)
+    } catch (error) {
+      /* a control that cannot hold a selection simply keeps its own */
+    }
+  }, [draft])
 
   /**
    * Put the references back, one chip per editor revision.
@@ -2369,13 +2427,16 @@ function FullscreenInputDock(props) {
    * `insertReference` is revision-guarded — the span carries the `draftRev` it
    * was planned against — so each insertion invalidates the span of the next.
    * Rather than guess how the host advances that counter, this inserts a single
-   * chip per pass and lets the next revision re-enter the effect. Replacing a
-   * run of text with a chip leaves the clipboard projection byte-identical, so
-   * the offsets planned up front stay valid for the whole run.
+   * chip per pass and lets the next revision re-enter the effect.
    *
-   * A refusal, or a probe that comes back empty, simply ends the attempt: the
-   * references stay plain text, which is precisely what this panel did before.
-   * Nothing here can leave the draft worse off than not trying.
+   * **The span is in the host's *detect* coordinates, not the clipboard ones the
+   * plan is built in.** A chip is one character (`U+FFFC`) in the detect
+   * projection but its whole `@path` in the clipboard projection
+   * (`$composerLayout` pushes exactly that pair), so every chip already put back
+   * has shortened detect space by `length - 1` relative to the offsets the plan
+   * holds. Carrying that drift is not an optimisation: without it the second
+   * insertion aims past its text, `selectSpan` refuses the range, and the pass
+   * ends — the first reference comes back and every later one stays plain text.
    */
   React.useEffect(() => {
     const pending = pendingRestoreRef.current
@@ -2387,6 +2448,7 @@ function FullscreenInputDock(props) {
     if (pending.plan === undefined) {
       pending.plan = planReferenceRebuild(draft, pending.occurrences)
       pending.index = 0
+      pending.drift = 0
     }
     if (pending.index >= pending.plan.length) {
       pendingRestoreRef.current = null
@@ -2395,7 +2457,11 @@ function FullscreenInputDock(props) {
     const step = pending.plan[pending.index]
     let applied = false
     try {
-      applied = insertReference(step.insert, { start: step.start, end: step.end, draftRev }) === true
+      applied = insertReference(step.insert, {
+        start: step.start - pending.drift,
+        end: step.end - pending.drift,
+        draftRev,
+      }) === true
     } catch (error) {
       applied = false
     }
@@ -2403,6 +2469,13 @@ function FullscreenInputDock(props) {
       pendingRestoreRef.current = null
       return
     }
+    // The host also appends a separating space when the span is not already
+    // followed by one, which lengthens the clipboard projection instead — so it
+    // cancels one unit of drift the other way. Read from the plan's own draft,
+    // which is the text the host saw when it made that decision.
+    const tail = draft.charAt(step.end)
+    const chip = step.insert.clipboardText
+    pending.drift += (chip.length - 1) - (tail === ' ' ? 0 : 1)
     pending.index += 1
     if (pending.index >= pending.plan.length) pendingRestoreRef.current = null
   }, [draft, draftRev, insertReference])
