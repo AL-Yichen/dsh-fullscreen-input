@@ -1,5 +1,7 @@
 # dsh-fullscreen-input
 
+[![English](https://img.shields.io/badge/lang-English-9aa0a6)](README.en.md) [![简体中文](https://img.shields.io/badge/lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-4176e6)](README.md)
+
 [![npm](https://img.shields.io/npm/v/dsh-fullscreen-input?color=4176e6)](https://www.npmjs.com/package/dsh-fullscreen-input) [![License](https://img.shields.io/github/license/AL-Yichen/dsh-fullscreen-input?color=4176e6)](./LICENSE) [![DSH](https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.1%20%3C0.3.0--0-4176e6)](#兼容性) [![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/AL-Yichen/dsh-fullscreen-input/pulls)
 
 给 DSH 的输入框加一个**全屏输入面板**：在整屏空间里写多行文本，写完点按钮发送。

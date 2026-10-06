@@ -18,6 +18,7 @@
     "cordis.patch.yml",
     "build-client.mjs",
     "README.md",
+    "README.en.md",
     "AGENTS.md",
     "CHANGELOG.md",
     "SECURITY.md",
