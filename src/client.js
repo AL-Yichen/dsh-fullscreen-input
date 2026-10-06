@@ -659,6 +659,50 @@ function storedPanelSize() {
     : null
 }
 
+/** A wheel "line", per the conventional 16px. */
+const WHEEL_LINE_PX = 16
+
+/**
+ * The scrollable element under a viewport point, skipping our own overlay.
+ *
+ * The overlay is `position:fixed` and covers the viewport, so it sits *outside*
+ * the host's scroll container: a wheel event landing on it has no scrollable
+ * ancestor to act on, and the conversation behind stays frozen — exactly when a
+ * reader is trying to consult it while writing. Forwarding the delta by hand
+ * means answering "which element should scroll?", and the honest answer is
+ * "whatever is under the pointer", so this asks the document for the stack at
+ * that point and takes the first scrollable element that is not ours.
+ *
+ * That also makes the behaviour match what the user sees: scrolling over the
+ * message list scrolls the messages, not the sidebar.
+ */
+function scrollableUnder(x, y, own) {
+  try {
+    const stack = document.elementsFromPoint(x, y)
+    for (const node of stack) {
+      if (own !== null && own !== undefined && own.contains(node)) continue
+      let current = node
+      while (current !== null && current !== undefined && current !== document.body) {
+        const { overflowY } = getComputedStyle(current)
+        const scrolls = overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay'
+        if (scrolls && current.scrollHeight > current.clientHeight) return current
+        current = current.parentElement
+      }
+    }
+  } catch (error) {
+    // No forwarding is better than a broken panel.
+  }
+  return null
+}
+
+/** Wheel deltas arrive in pixels, lines or pages depending on the device. */
+function wheelPixels(event, axis, viewport) {
+  const delta = axis === 'y' ? event.deltaY : event.deltaX
+  if (event.deltaMode === 1) return delta * WHEEL_LINE_PX
+  if (event.deltaMode === 2) return delta * viewport
+  return delta
+}
+
 /** The host close glyph, matching the shell's own dismiss control. */
 function CloseGlyph() {
   return React.createElement(
@@ -1740,6 +1784,32 @@ function FullscreenInputDock(props) {
     pending.index += 1
     if (pending.index >= pending.plan.length) pendingRestoreRef.current = null
   }, [draft, draftRev, insertReference])
+
+  /**
+   * Forward wheels that land on the mask to whatever is behind it.
+   *
+   * Bound natively rather than through an `onWheel` prop on the layer: React
+   * attaches wheel listeners passively, which turns `preventDefault` into a no-op
+   * (and logs a warning). Cancelling the default is what keeps the page from
+   * scrolling twice if an engine ever does find an ancestor to scroll.
+   */
+  React.useEffect(() => {
+    const layer = layerRef.current
+    if (layer === null || layer === undefined) return undefined
+    const onWheel = (event) => {
+      // Inside the pane the wheel belongs to the pane — the textarea and the
+      // reference rail scroll themselves.
+      const panel = panelRef.current
+      if (panel !== null && panel !== undefined && panel.contains(event.target)) return
+      const scroller = scrollableUnder(event.clientX, event.clientY, layer)
+      if (scroller === null) return
+      event.preventDefault()
+      scroller.scrollTop += wheelPixels(event, 'y', scroller.clientHeight)
+      scroller.scrollLeft += wheelPixels(event, 'x', scroller.clientWidth)
+    }
+    layer.addEventListener('wheel', onWheel, { passive: false })
+    return () => { layer.removeEventListener('wheel', onWheel) }
+  }, [open])
 
   const onTextInput = React.useCallback(
     (event) => {
