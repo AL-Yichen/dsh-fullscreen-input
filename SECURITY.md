@@ -7,7 +7,7 @@
 - **没有网络请求。** 不调用 `fetch`、`XMLHttpRequest`、`WebSocket` 或 `sendBeacon`；没有遥测、分析或崩溃上报。
 - **不执行文件系统或 shell 操作。** 不使用 `child_process`、`ctx.fs`、`ctx.shell`；不使用 `eval` 或 `new Function`。
 - **不读取会话内容或凭据。** 它读写的是**用户自己正在编辑的那份草稿**，通过宿主自己的输入动作（`setDraft`、`submit`、`insertReference`）完成，与宿主自带的发送按钮走同一条路径。
-- **唯一的本机持久化**是一个 `localStorage` 键 `dsh-fullscreen-input:settings`，只存面板外观偏好（遮罩透明度/雾化、毛玻璃开关与颜色）。该值在读取时被严格校验为 `#rrggbb` 字面量或 `theme` 标记，因此手改这个键无法注入任意 CSS。
+- **唯一的本机持久化**是一个 `localStorage` 键 `dsh-fullscreen-input:settings`，只存面板外观偏好（遮罩开关与不透明度/雾化、面板底色开关与颜色/不透明度）。该值在读取时被严格校验为 `#rrggbb` 字面量或 `theme` 标记，因此手改这个键无法注入任意 CSS。
 - **唯一接触文件的路径**是驱动宿主**自己的**隐藏文件输入框（`input[type="file"][multiple]`）：面板左下角的「添加文件」按钮会 `.click()` 它，面板内的粘贴会把剪贴板文件放进它的 `DataTransfer` 并派发 `change`。请求文件对话框必须在用户的点击/粘贴手势内完成，且收到文件后的处理全部由宿主代码完成，插件不读取文件内容。
 
 ## 权限

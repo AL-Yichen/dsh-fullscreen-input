@@ -88,14 +88,16 @@ const DICT = {
     'panel.settings.close': '关闭设置',
     'settings.glass': '启用毛玻璃效果',
     'settings.glass.desc': '面板改为半透明毛玻璃，模糊身后的桌面',
+    'settings.solid': '纯色面板',
+    'settings.solid.desc': '铺一层不带模糊的底色，适合不想要透明效果时使用；开启会关掉毛玻璃，毛玻璃开启时也会把它关掉',
     'settings.maskOpacity': '遮罩层不透明度',
     'settings.maskOpacity.desc': '0% 为完全透明，面板外区域不遮挡桌面',
     'settings.maskFog': '遮罩层雾化',
     'settings.maskFog.desc': '模糊面板之外的桌面，营造景深',
-    'settings.glassOpacity': '玻璃透明度',
-    'settings.glassOpacity.desc': '数值越小越透明，透出的桌面越多',
-    'settings.glassColor': '玻璃颜色',
-    'settings.glassColor.desc': '毛玻璃的底色，跟随主题或指定颜色',
+    'settings.glassOpacity': '面板不透明度',
+    'settings.glassOpacity.desc': '面板底色的浓度：100% 为完全不透明，数值越小则透出的桌面越多',
+    'settings.glassColor': '面板颜色',
+    'settings.glassColor.desc': '面板底色的颜色，跟随主题或指定颜色',
     'settings.glassFog': '面板雾化',
     'settings.glassFog.desc': '只模糊面板自身覆盖的区域，不影响面板之外',
     'settings.themeColor': '跟随主题',
@@ -113,14 +115,14 @@ const DICT = {
     'settings.showHint.button': '查看提示',
     'hint.title': '全屏输入 · 使用提示',
     'hint.reset': '双击面板顶部的标题栏，可把面板恢复到默认位置与默认大小。',
-    'hint.settings': '更多设置（遮罩、毛玻璃、大小与位置记忆、唤起快捷键）请点击面板右上角的小太阳图标，打开「全屏输入设置」查看。',
+    'hint.settings': '更多设置（遮罩、面板底色、大小与位置记忆、唤起快捷键）请点击面板右上角的小太阳图标，打开「全屏输入设置」查看。',
     'hint.mute': '不再提示',
     'hint.ok': '关闭',
     'hint.close': '关闭提示',
     'settings.groupMask': '遮罩层',
     'settings.mask': '启用遮罩层',
     'settings.mask.desc': '关闭后不再有遮罩，鼠标可直接点击、滚动背后的页面；此时点击面板之外也不再关闭面板（Esc 与唤起快捷键仍可关闭）',
-    'settings.groupGlass': '面板毛玻璃',
+    'settings.groupGlass': '面板底色',
   },
   en: {
     'button.label': 'Full-screen input',
@@ -145,14 +147,16 @@ const DICT = {
     'panel.settings.close': 'Close settings',
     'settings.glass': 'Frosted glass',
     'settings.glass.desc': 'Make the pane translucent and blur the desktop behind it',
+    'settings.solid': 'Solid pane',
+    'settings.solid.desc': 'Lay down a tint without any blur, for when you want no transparency at all; turning it on switches frosted glass off, and the reverse',
     'settings.maskOpacity': 'Mask opacity',
     'settings.maskOpacity.desc': '0% keeps everything outside the pane fully transparent',
     'settings.maskFog': 'Mask fog',
     'settings.maskFog.desc': 'Blur the desktop outside the pane for depth',
-    'settings.glassOpacity': 'Glass opacity',
-    'settings.glassOpacity.desc': 'Lower values show more of the desktop through the pane',
-    'settings.glassColor': 'Glass colour',
-    'settings.glassColor.desc': 'Base tint of the frosted pane: theme or a fixed colour',
+    'settings.glassOpacity': 'Panel opacity',
+    'settings.glassOpacity.desc': 'How strong the pane tint is: 100% is fully opaque, lower values let the desktop show through',
+    'settings.glassColor': 'Panel colour',
+    'settings.glassColor.desc': 'Base colour of the pane: theme or a fixed colour',
     'settings.glassFog': 'Pane fog',
     'settings.glassFog.desc': 'Blurs only what the pane covers, nothing outside it',
     'settings.themeColor': 'Theme',
@@ -170,14 +174,14 @@ const DICT = {
     'settings.showHint.button': 'Show tips',
     'hint.title': 'Full-screen input · Getting started',
     'hint.reset': 'Double-click the panel header to restore its default position and size.',
-    'hint.settings': 'For more — mask, frosted glass, remembering size and position, summon shortcut — open Full-screen input settings from the sun icon at the top right of the panel.',
+    'hint.settings': 'For more — mask, pane background, remembering size and position, summon shortcut — open Full-screen input settings from the sun icon at the top right of the panel.',
     'hint.mute': "Don't show again",
     'hint.ok': 'Close',
     'hint.close': 'Close tips',
     'settings.groupMask': 'Mask',
     'settings.mask': 'Show the mask',
     'settings.mask.desc': 'Turn off to drop the mask so the page behind stays clickable and scrollable; clicking outside then no longer closes the panel (Escape and the shortcut still do)',
-    'settings.groupGlass': 'Pane glass',
+    'settings.groupGlass': 'Pane background',
   },
 }
 
@@ -570,6 +574,10 @@ const VIEWPORT_MARGIN = 24
 
 const DEFAULT_SETTINGS = {
   glass: false,
+  // 纯色面板：铺一层不透明底色、但不加模糊。与「毛玻璃」互斥——两个都关
+  // 才是全透明，这正是用户抱怨过的那一态。底色与不透明度沿用毛玻璃那两个
+  // 设置项，所以纯色也能调出半透明有色，而不只是死板的实心块。
+  solid: false,
   // On by default so the panel behaves exactly as it always has. Turning it off
   // drops the scrim entirely and lets clicks and wheels reach the page behind.
   mask: true,
@@ -626,6 +634,7 @@ function readSettings() {
     if (parsed === null || typeof parsed !== 'object') return { ...DEFAULT_SETTINGS }
     return {
       glass: parsed.glass === true,
+      solid: parsed.solid === true,
       mask: parsed.mask !== false,
       maskOpacity: clampNumber(parsed.maskOpacity, 0, 100, DEFAULT_SETTINGS.maskOpacity),
       maskFog: clampNumber(parsed.maskFog, 0, 100, DEFAULT_SETTINGS.maskFog),
@@ -723,6 +732,9 @@ function maskStyleOf(settings) {
  * `background-color`, so that CSS does the parsing (see below).
  */
 function panelStyleOf(settings, size) {
+  // 纯色与毛玻璃共用同一套底色逻辑，区别只在后面那层模糊：纯色只铺色，不模糊。
+  // 两个都关时面板保持全透明——这正是「把两个开关都关掉」预期的那一态。
+  const glassy = settings.glass || settings.solid
   const alpha = clampNumber(settings.glassOpacity, 0, 100, DEFAULT_GLASS_OPACITY)
   const style = {
     '--dshfs-accent': PANEL_ACCENT,
@@ -738,9 +750,14 @@ function panelStyleOf(settings, size) {
     // opacity in the same step, for any format. If it is unsupported the whole
     // declaration is dropped and the sheet's plain token shows through — so the
     // panel still gets a sane background rather than none.
-    '--dshfs-fill': settings.glassColor === 'theme'
-      ? `color-mix(in srgb,var(--dsw-alias-bg-layer-1,#fff) ${String(alpha)}%,transparent)`
-      : withAlpha(settings.glassColor, alpha),
+    // 没有底色时必须是**字面**的 `transparent`：样式表写的是
+    // `var(--dshfs-fill, <主题色>)`，带着回退值，不显式覆盖就会被主题色填满，
+    // 于是「两个开关都关」看起来仍有底色。回退只救得了取值失败，救不了「不设」。
+    '--dshfs-fill': !glassy
+      ? 'transparent'
+      : settings.glassColor === 'theme'
+        ? `color-mix(in srgb,var(--dsw-alias-bg-layer-1,#fff) ${String(alpha)}%,transparent)`
+        : withAlpha(settings.glassColor, alpha),
   }
   if (settings.glass) {
     const px = (clampNumber(settings.glassFog, 0, 100, DEFAULT_GLASS_FOG) / 100) * MAX_PANEL_FOG_PX
@@ -1086,6 +1103,8 @@ function HotkeyPicker(props) {
 function SettingsDialog(props) {
   const t = props.t
   const settings = useSettings()
+  // 毛玻璃与纯色共用同一组底色控件，两处判断走同一个名字，免得日后只改一处。
+  const glassy = settings.glass || settings.solid
 
   return React.createElement(
     'div',
@@ -1108,6 +1127,9 @@ function SettingsDialog(props) {
         // Observable switch state: the dependent glass knobs are gated on it, so
         // it is worth being able to assert from the outside.
         'data-glass': settings.glass ? 'on' : 'off',
+        // 底色其实是个三态（都关 / 纯色 / 毛玻璃），`data-glass` 只说得清两态，
+        // 所以再把纯色单独暴露出来。
+        'data-solid': settings.solid ? 'on' : 'off',
       },
       React.createElement(
         'div',
@@ -1174,23 +1196,48 @@ function SettingsDialog(props) {
             checked: settings.glass,
             label: t('settings.glass'),
             onChange: (next) => {
-              writeSettings({ glass: next })
+              // 与「纯色面板」互斥：开这个就关那个，两个开关不会同时亮着。
+              // 互斥必须两边都写，只在一处关对方的话，另一个开关仍能留下
+              // 「两个都亮」的状态。
+              writeSettings(next ? { glass: true, solid: false } : { glass: false })
             },
           }),
         ),
-        // The dependent knobs appear only while the effect is on, so a user who
-        // never enables it is not asked to reason about glass colour.
+        // 纯色面板与毛玻璃互斥，由这两处开关各自把对方关掉：两个都关才是全透明，
+        // 这正是「关掉毛玻璃却得到透明面板」那一态的由来。底色与不透明度沿用毛玻璃
+        // 那两个设置项，所以纯色也能调成半透明有色，而不是只能做死板的实心块。
+        React.createElement(
+          SettingsRow,
+          { inline: true, label: t('settings.solid'), description: t('settings.solid.desc') },
+          React.createElement(SettingsSwitch, {
+            checked: settings.solid,
+            label: t('settings.solid'),
+            onChange: (next) => {
+              // 开启时把底色拉到不透明：底色默认只有 25% 的浓度，不推满的话
+              // 「纯色面板」看起来还是一层淡色，与开关的名字不符。这是一次性的
+              // 默认值，用户随后仍可用下面的滑块调成半透明有色。
+              writeSettings(next
+                ? { solid: true, glass: false, glassOpacity: 100 }
+                : { solid: false })
+            },
+          }),
+        ),
+        // 雾化只属于毛玻璃：纯色面板不模糊，所以它只跟毛玻璃这个开关走。
         settings.glass
+          ? React.createElement(SettingsSlider, {
+            key: 'glass-fog',
+            label: t('settings.glassFog'),
+            description: t('settings.glassFog.desc'),
+            value: settings.glassFog,
+            onChange: (value) => {
+              writeSettings({ glassFog: value })
+            },
+          })
+          : null,
+        // 底色与不透明度只在「有底色」时才有意义——毛玻璃或纯色都算。两者都关
+        // 时面板全透明，这两项无从作用，于是随开关一起隐藏。
+        glassy
           ? [
-            React.createElement(SettingsSlider, {
-              key: 'glass-fog',
-              label: t('settings.glassFog'),
-              description: t('settings.glassFog.desc'),
-              value: settings.glassFog,
-              onChange: (value) => {
-                writeSettings({ glassFog: value })
-              },
-            }),
             React.createElement(SettingsSlider, {
               key: 'glass-opacity',
               label: t('settings.glassOpacity'),
