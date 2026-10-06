@@ -1,6 +1,6 @@
 {
   "name": "dsh-fullscreen-input",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "全屏输入面板：输入框工具栏上的一个图标，点开后在全屏窗口里写多行文本。Enter 只换行、仅 Ctrl+Enter（或点右下角发送按钮）才提交，彻底绕开中文输入法下 Shift+Enter 被误判成发送的问题。面板与主输入框共享同一份草稿——引用、附件、粘贴、拖放都与它一致，Esc 关闭不丢内容。",
   "license": "MIT",
   "author": "AL_Yichen <alyichen0815@gmail.com>",
