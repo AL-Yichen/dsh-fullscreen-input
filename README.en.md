@@ -24,6 +24,8 @@ DSH's own composer decides whether `Shift+Enter` inserts a newline or sends by l
 
 Open the **Plugins** page in DSH's sidebar, click **Add plugin**, type the package name `dsh-fullscreen-input`, and install.
 
+> That box also accepts a Git URL, an archive, or a local absolute path, so a plugin that was never published to npm installs the same way. The plugin manager only manages packages that declare `dsh.bundle`; this one does.
+
 ### Command line
 
 ```sh
