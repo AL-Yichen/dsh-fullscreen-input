@@ -1227,50 +1227,50 @@ function SettingsDialog(props) {
             ),
           ]
           : null,
-      ),
-      // --- behaviour group -----------------------------------------------
-      // Not cosmetic, so it comes after the appearance groups: what the panel
-      // remembers between openings, how it is summoned, and a way back to the
-      // intro dialog.
-      React.createElement('div', { className: 'dshfs-group' }, t('settings.groupBehaviour')),
-      React.createElement(
-        SettingsRow,
-        { inline: true, label: t('settings.rememberSize'), description: t('settings.rememberSize.desc') },
-        React.createElement(SettingsSwitch, {
-          checked: settings.rememberSize,
-          label: t('settings.rememberSize'),
-          onChange: (next) => { writeSettings({ rememberSize: next }) },
-        }),
-      ),
-      React.createElement(
-        SettingsRow,
-        { inline: true, label: t('settings.rememberPosition'), description: t('settings.rememberPosition.desc') },
-        React.createElement(SettingsSwitch, {
-          checked: settings.rememberPosition,
-          label: t('settings.rememberPosition'),
-          onChange: (next) => { writeSettings({ rememberPosition: next }) },
-        }),
-      ),
-      React.createElement(
-        SettingsRow,
-        { label: t('settings.hotkey'), description: t('settings.hotkey.desc') },
-        React.createElement(HotkeyPicker, {
-          value: settings.hotkey,
-          t,
-          onChange: (next) => { writeSettings({ hotkey: next }) },
-        }),
-      ),
-      React.createElement(
-        SettingsRow,
-        { inline: true, label: t('settings.showHint'), description: t('settings.showHint.desc') },
+        // --- behaviour group ---------------------------------------------
+        // Not cosmetic, so it comes after the appearance groups: what the panel
+        // remembers between openings, how it is summoned, and a way back to the
+        // intro dialog.
+        React.createElement('div', { className: 'dshfs-group' }, t('settings.groupBehaviour')),
         React.createElement(
-          'button',
-          {
-            type: 'button',
-            className: 'dshfs-btn',
-            onClick: props.onShowHint,
-          },
-          t('settings.showHint.button'),
+          SettingsRow,
+          { inline: true, label: t('settings.rememberSize'), description: t('settings.rememberSize.desc') },
+          React.createElement(SettingsSwitch, {
+            checked: settings.rememberSize,
+            label: t('settings.rememberSize'),
+            onChange: (next) => { writeSettings({ rememberSize: next }) },
+          }),
+        ),
+        React.createElement(
+          SettingsRow,
+          { inline: true, label: t('settings.rememberPosition'), description: t('settings.rememberPosition.desc') },
+          React.createElement(SettingsSwitch, {
+            checked: settings.rememberPosition,
+            label: t('settings.rememberPosition'),
+            onChange: (next) => { writeSettings({ rememberPosition: next }) },
+          }),
+        ),
+        React.createElement(
+          SettingsRow,
+          { label: t('settings.hotkey'), description: t('settings.hotkey.desc') },
+          React.createElement(HotkeyPicker, {
+            value: settings.hotkey,
+            t,
+            onChange: (next) => { writeSettings({ hotkey: next }) },
+          }),
+        ),
+        React.createElement(
+          SettingsRow,
+          { inline: true, label: t('settings.showHint'), description: t('settings.showHint.desc') },
+          React.createElement(
+            'button',
+            {
+              type: 'button',
+              className: 'dshfs-btn',
+              onClick: props.onShowHint,
+            },
+            t('settings.showHint.button'),
+          ),
         ),
       ),
     ),
