@@ -99,6 +99,7 @@ const DICT = {
     'settings.glassFog': '面板雾化',
     'settings.glassFog.desc': '只模糊面板自身覆盖的区域，不影响面板之外',
     'settings.themeColor': '跟随主题',
+    'settings.customColor': '自定义颜色',
     'settings.groupMask': '遮罩层',
     'settings.groupGlass': '面板毛玻璃',
   },
@@ -136,6 +137,7 @@ const DICT = {
     'settings.glassFog': 'Pane fog',
     'settings.glassFog.desc': 'Blurs only what the pane covers, nothing outside it',
     'settings.themeColor': 'Theme',
+    'settings.customColor': 'Custom colour',
     'settings.groupMask': 'Mask',
     'settings.groupGlass': 'Pane glass',
   },
@@ -349,6 +351,17 @@ const CSS = [
   'outline-offset:2px}',
   '.dshfs-swatch:focus-visible{outline:2px solid var(--dshfs-accent,#7aaaff);',
   'outline-offset:2px}',
+  // The custom-colour input, styled to sit in the same strip as the presets.
+  // `appearance:none` plus the webkit swatch pseudo-elements are what turn the
+  // native control into a plain circle; clicking it still opens the platform
+  // picker, which is the point of using the native control at all.
+  '.dshfs-swatch-picker{-webkit-appearance:none;appearance:none;border:0;cursor:pointer;',
+  'background:transparent;overflow:hidden}',
+  '.dshfs-swatch-picker::-webkit-color-swatch-wrapper{padding:0}',
+  '.dshfs-swatch-picker::-webkit-color-swatch{border:0;border-radius:50%}',
+  '.dshfs-swatch-picker::-moz-color-swatch{border:0;border-radius:50%}',
+  '.dshfs-swatch-picker[data-selected="true"]{outline:2px solid var(--dshfs-accent,#7aaaff);',
+  'outline-offset:2px}',
   // Group heading, so mask settings and glass settings read as two concerns.
   '.dshfs-group{font-size:12px;line-height:18px;font-weight:500;padding:12px 0 2px;',
   'color:var(--dsw-alias-label-secondary,#666)}',
@@ -434,6 +447,22 @@ const PANEL_ACCENT = '#7aaaff'
 /** `theme` defers to the host theme token; the rest are literal fills. */
 const GLASS_COLORS = ['theme', '#ffffff', '#0b0b0d', '#8fd8ea', '#f2a8bf', '#f5b866', '#ef6f6f']
 
+/**
+ * Whether a stored glass colour is a literal `#rrggbb`.
+ *
+ * The alternative is the `theme` marker, which deliberately has no literal form:
+ * the host's token is handed to CSS rather than parsed here (see
+ * `panelStyleOf`).
+ */
+function isGlassLiteral(value) {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
+/** Whether the stored colour came from the custom picker rather than a preset. */
+function isCustomGlassColor(value) {
+  return isGlassLiteral(value) && !GLASS_COLORS.includes(value)
+}
+
 const DEFAULT_SETTINGS = {
   glass: false,
   maskOpacity: 0,
@@ -462,7 +491,12 @@ function readSettings() {
       maskOpacity: clampNumber(parsed.maskOpacity, 0, 100, DEFAULT_SETTINGS.maskOpacity),
       maskFog: clampNumber(parsed.maskFog, 0, 100, DEFAULT_SETTINGS.maskFog),
       glassOpacity: clampNumber(parsed.glassOpacity, 0, 100, DEFAULT_SETTINGS.glassOpacity),
-      glassColor: GLASS_COLORS.includes(parsed.glassColor) ? parsed.glassColor : DEFAULT_SETTINGS.glassColor,
+      // Accept any literal colour, not just the presets: the custom picker
+      // produces arbitrary `#rrggbb` values, and validating against
+      // `GLASS_COLORS` alone would silently discard them on the next read.
+      glassColor: parsed.glassColor === 'theme' || isGlassLiteral(parsed.glassColor)
+        ? parsed.glassColor
+        : DEFAULT_SETTINGS.glassColor,
       glassFog: clampNumber(parsed.glassFog, 0, 100, DEFAULT_SETTINGS.glassFog),
     }
   } catch (error) {
@@ -850,6 +884,26 @@ function SettingsDialog(props) {
                     ? React.createElement('span', { className: 'dshfs-sr' }, t('settings.themeColor'))
                     : null,
                 )),
+                // A native colour input: clicking it opens the platform's own
+                // picker, which is the whole point -- no wheel to invent, and it
+                // is the picker the user already knows.
+                //
+                // A custom colour needs no new setting: `glassColor` has always
+                // held a `#rrggbb` for the fixed presets, so a custom one is just
+                // another value of the same field.
+                React.createElement('input', {
+                  type: 'color',
+                  className: 'dshfs-swatch dshfs-swatch-picker',
+                  // Its swatch shows the stored colour when that is a literal,
+                  // and white otherwise (the theme marker has no literal form).
+                  value: isGlassLiteral(settings.glassColor) ? settings.glassColor : '#ffffff',
+                  'data-selected': isCustomGlassColor(settings.glassColor) ? 'true' : 'false',
+                  'aria-label': t('settings.customColor'),
+                  title: t('settings.customColor'),
+                  onChange: (event) => {
+                    writeSettings({ glassColor: event.target.value })
+                  },
+                }),
               ),
             ),
           ]
