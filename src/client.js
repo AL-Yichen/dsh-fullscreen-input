@@ -206,6 +206,24 @@ const CSS = [
   '.dshfs-head{display:flex;align-items:center;gap:10px;flex:none;cursor:move;',
   'user-select:none;-webkit-user-select:none;touch-action:none;',
   'padding:10px 12px 10px 16px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2))}',
+  // Resize handles. They sit *inside* the border because the pane clips its
+  // overflow for the rounded corners, so a handle straddling the edge would be
+  // cut away. Five pixels is enough to grab without stealing clicks from the
+  // content underneath, and the corners get a slightly larger square so a
+  // diagonal drag is easy to start.
+  '.dshfs-resize{position:absolute;z-index:3;touch-action:none}',
+  '.dshfs-resize-n{top:0;left:14px;right:14px;height:5px;cursor:ns-resize}',
+  '.dshfs-resize-s{bottom:0;left:14px;right:14px;height:5px;cursor:ns-resize}',
+  '.dshfs-resize-w{left:0;top:14px;bottom:14px;width:5px;cursor:ew-resize}',
+  '.dshfs-resize-e{right:0;top:14px;bottom:14px;width:5px;cursor:ew-resize}',
+  '.dshfs-resize-nw{top:0;left:0;width:14px;height:14px;cursor:nwse-resize}',
+  '.dshfs-resize-ne{top:0;right:0;width:14px;height:14px;cursor:nesw-resize}',
+  '.dshfs-resize-sw{bottom:0;left:0;width:14px;height:14px;cursor:nesw-resize}',
+  '.dshfs-resize-se{bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize}',
+  // The single visible cue that the pane can be resized at all.
+  '.dshfs-resize-grip{position:absolute;right:0;bottom:0;width:14px;height:14px;',
+  'pointer-events:none;opacity:.3;border-bottom-right-radius:12px;',
+  'background:linear-gradient(135deg,transparent 48%,var(--dsw-alias-label-secondary,#888) 48%)}',
   '.dshfs-title{flex:1;min-width:0;font-size:14px;line-height:22px;font-weight:500;',
   'color:var(--dsw-alias-label-primary,#191919);overflow:hidden;text-overflow:ellipsis;',
   'white-space:nowrap}',
@@ -463,6 +481,23 @@ function isCustomGlassColor(value) {
   return isGlassLiteral(value) && !GLASS_COLORS.includes(value)
 }
 
+/**
+ * The eight resize handles: four edges and four corners. A corner drags two
+ * edges at once, which is what makes the panel's shape adjustable and not just
+ * its size.
+ */
+const RESIZE_DIRECTIONS = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se']
+
+/** The smallest the panel may be dragged to, in CSS pixels. */
+const MIN_PANEL_WIDTH = 360
+const MIN_PANEL_HEIGHT = 240
+
+/** Upper bound for a *stored* size, so a hand-edited key cannot make it absurd. */
+const MAX_PANEL_SIDE = 10000
+
+/** Gap kept between the panel and the viewport edge while resizing. */
+const VIEWPORT_MARGIN = 24
+
 const DEFAULT_SETTINGS = {
   glass: false,
   maskOpacity: 0,
@@ -470,6 +505,11 @@ const DEFAULT_SETTINGS = {
   glassOpacity: DEFAULT_GLASS_OPACITY,
   glassColor: 'theme',
   glassFog: DEFAULT_GLASS_FOG,
+  // 0 means "no explicit size", so the sheet's responsive default applies. The
+  // size is remembered across openings; the panel's *position* deliberately is
+  // not, and double-clicking the header clears both.
+  panelWidth: 0,
+  panelHeight: 0,
 }
 
 /** Coerce one stored field, so a hand-edited key cannot break the panel. */
@@ -498,6 +538,8 @@ function readSettings() {
         ? parsed.glassColor
         : DEFAULT_SETTINGS.glassColor,
       glassFog: clampNumber(parsed.glassFog, 0, 100, DEFAULT_SETTINGS.glassFog),
+      panelWidth: clampNumber(parsed.panelWidth, 0, MAX_PANEL_SIDE, 0),
+      panelHeight: clampNumber(parsed.panelHeight, 0, MAX_PANEL_SIDE, 0),
     }
   } catch (error) {
     return { ...DEFAULT_SETTINGS }
@@ -575,7 +617,7 @@ function maskStyleOf(settings) {
  * The fill rides in a **custom property** rather than straight on
  * `background-color`, so that CSS does the parsing (see below).
  */
-function panelStyleOf(settings) {
+function panelStyleOf(settings, size) {
   const alpha = clampNumber(settings.glassOpacity, 0, 100, DEFAULT_GLASS_OPACITY)
   const style = {
     '--dshfs-accent': PANEL_ACCENT,
@@ -601,7 +643,24 @@ function panelStyleOf(settings) {
     style.backdropFilter = blur
     style.WebkitBackdropFilter = blur
   }
+  // An explicit size wins over the sheet's responsive default. `size` is the live
+  // value while a resize is in flight; the stored one is what makes the panel
+  // come back the size the user left it.
+  const width = size !== null && size !== undefined ? size.w : settings.panelWidth
+  const height = size !== null && size !== undefined ? size.h : settings.panelHeight
+  if (width > 0 && height > 0) {
+    style.width = `${String(width)}px`
+    style.height = `${String(height)}px`
+  }
   return style
+}
+
+/** The stored panel size, or null when the responsive default should apply. */
+function storedPanelSize() {
+  const stored = currentSettings
+  return stored.panelWidth > 0 && stored.panelHeight > 0
+    ? { w: stored.panelWidth, h: stored.panelHeight }
+    : null
 }
 
 /** The host close glyph, matching the shell's own dismiss control. */
@@ -1342,6 +1401,20 @@ function FullscreenInputDock(props) {
   const dragRef = React.useRef(null)
 
   /**
+   * The panel's size.
+   *
+   * Initialised from storage and carried here while a resize is in flight; the
+   * settled value is written back to settings so the panel reopens at the size
+   * it was left at. `null` means "no explicit size" and lets the sheet's
+   * responsive default apply.
+   */
+  const [size, setSize] = React.useState(storedPanelSize)
+  const sizeRef = React.useRef(size)
+  sizeRef.current = size
+  const resizeRef = React.useRef(null)
+  const panelRef = React.useRef(null)
+
+  /**
    * Start dragging from the header.
    *
    * Three things this has to get right, none of them obvious:
@@ -1398,9 +1471,102 @@ function FullscreenInputDock(props) {
     }
   }, [])
 
-  /** Double-clicking the header recentres without closing the panel. */
+  /**
+   * Double-clicking the header restores both at once: the panel recentres, and
+   * it goes back to its default size — with the stored size cleared so the next
+   * open agrees.
+   */
   const onHeadDoubleClick = React.useCallback(() => {
     setDragOffset(NO_DRAG)
+    setSize(null)
+    writeSettings({ panelWidth: 0, panelHeight: 0 })
+  }, [])
+
+  /**
+   * Start a resize from one of the eight handles.
+   *
+   * `dir` names the edges being dragged — any combination of n/s/e/w, so a
+   * corner drags two at once and the panel's *shape* changes, not merely its
+   * size. The starting size is read from the live rect rather than from state,
+   * because the first drag happens while the panel is still on its responsive
+   * default.
+   */
+  const onResizePointerDown = React.useCallback((event, dir) => {
+    if (event.button !== 0) return
+    const panel = panelRef.current
+    if (panel === null || panel === undefined) return
+    event.preventDefault()
+    const rect = panel.getBoundingClientRect()
+    resizeRef.current = {
+      pointerId: event.pointerId,
+      dir,
+      startX: event.clientX,
+      startY: event.clientY,
+      startW: rect.width,
+      startH: rect.height,
+      startOffsetX: dragOffset.x,
+      startOffsetY: dragOffset.y,
+    }
+    const capture = event.currentTarget
+    if (capture !== null && capture !== undefined && typeof capture.setPointerCapture === 'function') {
+      try {
+        capture.setPointerCapture(event.pointerId)
+      } catch (error) {
+        // Without capture the resize still works while the pointer stays inside.
+      }
+    }
+    // `dragOffset` is a dependency: the west/north compensation below is applied
+    // on top of wherever the panel has been moved to, so a stale closure here
+    // would snap it back to the offset it had when the callback was created.
+  }, [dragOffset])
+
+  const onResizePointerMove = React.useCallback((event) => {
+    const drag = resizeRef.current
+    if (drag === null || drag.pointerId !== event.pointerId) return
+    const dx = event.clientX - drag.startX
+    const dy = event.clientY - drag.startY
+    const { dir } = drag
+    // Bounded by the viewport. Unlike moving the panel, an oversized pane would
+    // push its own handles off-screen, leaving no way to shrink it back.
+    const maxW = Math.max(MIN_PANEL_WIDTH, window.innerWidth - VIEWPORT_MARGIN)
+    const maxH = Math.max(MIN_PANEL_HEIGHT, window.innerHeight - VIEWPORT_MARGIN)
+    const rawW = dir.includes('e') ? drag.startW + dx : dir.includes('w') ? drag.startW - dx : drag.startW
+    const rawH = dir.includes('s') ? drag.startH + dy : dir.includes('n') ? drag.startH - dy : drag.startH
+    const w = Math.min(maxW, Math.max(MIN_PANEL_WIDTH, Math.round(rawW)))
+    const h = Math.min(maxH, Math.max(MIN_PANEL_HEIGHT, Math.round(rawH)))
+    setSize({ w, h })
+    // The pane is centred by a flex box, so it grows out from its middle: change
+    // the width alone and *both* edges move, which makes dragging the west or
+    // north edge feel inverted. Shifting by half the size change pins the edge
+    // the user grabbed under the pointer instead.
+    const shiftX = dir.includes('w') ? (drag.startW - w) / 2 : 0
+    const shiftY = dir.includes('n') ? (drag.startH - h) / 2 : 0
+    if (shiftX !== 0 || shiftY !== 0) {
+      setDragOffset({
+        x: drag.startOffsetX + shiftX,
+        y: drag.startOffsetY + shiftY,
+      })
+    }
+  }, [])
+
+  const onResizePointerUp = React.useCallback((event) => {
+    const drag = resizeRef.current
+    if (drag === null || drag.pointerId !== event.pointerId) return
+    resizeRef.current = null
+    const capture = event.currentTarget
+    if (capture !== null && capture !== undefined && typeof capture.releasePointerCapture === 'function') {
+      try {
+        capture.releasePointerCapture(event.pointerId)
+      } catch (error) {
+        // Already released, or never captured.
+      }
+    }
+    // Persisted once, on release: writing on every move would hit localStorage
+    // dozens of times per drag for a value nothing reads until the next open.
+    const settled = sizeRef.current
+    if (settled !== null) {
+      writeSettings({ panelWidth: settled.w, panelHeight: settled.h })
+    }
   }, [])
 
   // Reopening always recentres. The offset is view state for one showing, not a
@@ -1694,10 +1860,11 @@ function FullscreenInputDock(props) {
     React.createElement(
       'div',
       {
+        ref: panelRef,
         className: settings.glass ? 'dshfs-panel dshfs-glass' : 'dshfs-panel',
         // The drag rides on top of the pane's own look; the layer's flex box
         // keeps owning the centred layout either way.
-        style: Object.assign({}, panelStyleOf(settings), {
+        style: Object.assign({}, panelStyleOf(settings, size), {
           transform: `translate(${String(dragOffset.x)}px, ${String(dragOffset.y)}px)`,
         }),
       },
@@ -1830,6 +1997,19 @@ function FullscreenInputDock(props) {
           onClose: () => { setPreview(null) },
         })
         : null,
+      // The resize handles go last so nothing else can sit over them. They live
+      // *inside* the pane because it clips its overflow for the rounded corners,
+      // so a handle straddling the border would simply be cut away.
+      RESIZE_DIRECTIONS.map((dir) => React.createElement('div', {
+        key: dir,
+        className: `dshfs-resize dshfs-resize-${dir}`,
+        onPointerDown: (event) => { onResizePointerDown(event, dir) },
+        onPointerMove: onResizePointerMove,
+        onPointerUp: onResizePointerUp,
+        onPointerCancel: onResizePointerUp,
+      })),
+      // The one visible affordance, so the panel reads as resizable at a glance.
+      React.createElement('span', { className: 'dshfs-resize-grip', 'aria-hidden': true }),
     ),
   )
 
