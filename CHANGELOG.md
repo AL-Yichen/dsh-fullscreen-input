@@ -2,7 +2,7 @@
 
 本文件记录本插件的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [1.2.3] - 2026-10-07
 
 ### 修复
 
@@ -22,6 +22,14 @@
 - **探测必须用裸 `getComputedStyle`。** 客户端半侧跑在宿主沙箱的 `window` 替身上，被转发的函数挂在**沙箱顶层**，`window.getComputedStyle` 在那里是 `undefined`。
 - **测试夹具现在解析 `react-dom`。** 此前它对任何非 `react` 的模块直接抛错，于是 portal 那条路径根本走不到，测到的只会是兜底分支 —— 也就是**修不好**这个 bug 的那一支。另加断言：默认不 portal（DOM 位置与结构不变）、祖先带 `container-type` 时逃逸到 `body` 且仍是带遮罩的 dialog、逃逸后仍覆盖视口、卸载不留残余（这一条改问 `document` 而非容器，因为逃逸后的层在 `body` 上），以及两条源码级断言——探测覆盖全部七类成因、且每个默认拼写都被当作未设置。
   - 那个逃逸用例原本用 `transform` 触发，现已换成 **`container-type`**：真机命中的就是它，用真实成因做回归比用同类里最出名的那一个更值。
+
+### 打包
+
+- **`AGENTS.md` 不再随 npm 包发布。** 它是给**维护者**的指令（"七条不能碰的约束""改完必须重建"），而 npm 包装进 `node_modules` 之后，DSH 的 `dsh-agent-instructions` 会在 agent 触碰该目录时把它当作**工作区指令**注入（候选文件名正是 `['AGENTS.md', 'CLAUDE.md']`）。结果是：只是**使用**这个插件的人，其会话也会被塞进几 KB 的维护者指令；而那些内容教的是怎么改这个库，使用者不该改 `node_modules` 里的东西。
+  - 做法是把它移出 `package.json` 的 `files`，**仓库里保留**——在这里工作的 agent 确实是在改这个插件，注入正是想要的。这也是为什么解法不是改名或删除。
+  - 发布清单因此从 12 个文件变成 **11 个**。`src/` 与 `build-client.mjs` 继续保留：`link:` 安装要用它们重建。
+
+## [Unreleased]
 
 ## [1.2.2] - 2026-10-07
 

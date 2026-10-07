@@ -1,6 +1,6 @@
 {
   "name": "dsh-fullscreen-input",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "给 DSH 的输入框加一个全屏输入面板：在整屏空间里写多行文本，可拖动标题栏移动、可拖边框改大小，引用与附件都与主输入框共用同一份草稿。Enter 换行、仅 Ctrl+Enter 发送，因此中文输入法下 Shift+Enter 也不会被误判成发送。",
   "license": "MIT",
   "author": "AL_Yichen <alyichen0815@gmail.com>",
@@ -19,7 +19,6 @@
     "build-client.mjs",
     "README.md",
     "README.en.md",
-    "AGENTS.md",
     "CHANGELOG.md",
     "SECURITY.md",
     "LICENSE"
