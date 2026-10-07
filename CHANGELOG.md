@@ -2,7 +2,7 @@
 
 本文件记录本插件的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [1.2.4] - 2026-10-07
 
 ### 新增
 
@@ -48,8 +48,6 @@
 - **`AGENTS.md` 不再随 npm 包发布。** 它是给**维护者**的指令（"七条不能碰的约束""改完必须重建"），而 npm 包装进 `node_modules` 之后，DSH 的 `dsh-agent-instructions` 会在 agent 触碰该目录时把它当作**工作区指令**注入（候选文件名正是 `['AGENTS.md', 'CLAUDE.md']`）。结果是：只是**使用**这个插件的人，其会话也会被塞进几 KB 的维护者指令；而那些内容教的是怎么改这个库，使用者不该改 `node_modules` 里的东西。
   - 做法是把它移出 `package.json` 的 `files`，**仓库里保留**——在这里工作的 agent 确实是在改这个插件，注入正是想要的。这也是为什么解法不是改名或删除。
   - 发布清单因此从 12 个文件变成 **11 个**。`src/` 与 `build-client.mjs` 继续保留：`link:` 安装要用它们重建。
-
-## [Unreleased]
 
 ## [1.2.2] - 2026-10-07
 
