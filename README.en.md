@@ -57,6 +57,7 @@ A new icon appears in the composer's tool row (the line with the "+" button); ho
 | `Shift+Enter` | newline (same as `Enter`; Shift only ever means newline here) |
 | `Ctrl+Enter` / `Cmd+Enter` | send |
 | `Esc` | close the panel (if a settings dialog is open, that closes first and the panel stays) |
+| `Ctrl+0` | restore the panel's default position and size (same as double-clicking the header). **The way back in when the header is out of reach**: it does not need focus inside the panel, only the panel to be open |
 | `F2` | open / close the panel (rebindable to another function key in settings) |
 | `Enter` / `Ctrl+Enter` while an IME is composing | newline — **never** sends |
 | Click outside the panel | close the panel (same as `Esc`; does not apply once the mask is switched off) |

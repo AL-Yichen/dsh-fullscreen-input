@@ -133,7 +133,7 @@ const DICT = {
     'settings.showHint.desc': '再次显示首次使用时的提示弹窗',
     'settings.showHint.button': '查看提示',
     'hint.title': '全屏输入 · 使用提示',
-    'hint.reset': '双击面板顶部的标题栏，可把面板恢复到默认位置与默认大小。',
+    'hint.reset': '双击面板顶部的标题栏（或按 Ctrl+0），可把面板恢复到默认位置与默认大小。',
     'hint.settings': '更多设置（遮罩、面板底色、大小与位置记忆、唤起快捷键）请点击面板右上角的小太阳图标，打开「全屏输入设置」查看。',
     'hint.mute': '不再提示',
     'hint.ok': '关闭',
@@ -193,7 +193,7 @@ const DICT = {
     'settings.showHint.desc': 'Show the first-run dialog again',
     'settings.showHint.button': 'Show tips',
     'hint.title': 'Full-screen input · Getting started',
-    'hint.reset': 'Double-click the panel header to restore its default position and size.',
+    'hint.reset': 'Double-click the panel header (or press Ctrl+0) to restore its default position and size.',
     'hint.settings': 'For more — mask, pane background, remembering size and position, summon shortcut — open Full-screen input settings from the sun icon at the top right of the panel.',
     'hint.mute': "Don't show again",
     'hint.ok': 'Close',
@@ -2232,11 +2232,13 @@ function FullscreenInputDock(props) {
   }, [])
 
   /**
-   * Double-clicking the header restores both at once: the panel recentres, and
-   * it goes back to its default size — with the stored size cleared so the next
-   * open agrees.
+   * Restore the default size and position, clearing the stored copies with them.
+   *
+   * Reachable two ways on purpose: double-clicking the header, and `Ctrl/Cmd+0`.
+   * The header is the **only** mouse affordance that can rescue a panel, so when
+   * it is out of reach the keyboard has to be able to do the same thing.
    */
-  const onHeadDoubleClick = React.useCallback(() => {
+  const resetPlacement = React.useCallback(() => {
     setDragOffset(NO_DRAG)
     setSize(null)
     // The stored values are cleared too, or the next open would restore what the
@@ -2445,12 +2447,25 @@ function FullscreenInputDock(props) {
    * inside this panel — a host dialog rendered elsewhere keeps its own Escape.
    *
    * This is not the "hijack the keyboard globally" the brief warns about: the
-   * listener exists only while the panel is open, handles exactly one key, and
-   * never touches Enter or any typing key.
+   * listener exists only while the panel is open, handles two keys (Escape and
+   * Ctrl/Cmd+0), and never touches Enter or any typing key.
    */
   React.useEffect(() => {
     if (!open) return undefined
     const onKeyDownCapture = (event) => {
+      // Ctrl/Cmd+0 restores the default size and position -- what the header's
+      // double-click does, and deliberately reachable from **anywhere** while
+      // the panel is open, not just from inside it. The header is the one mouse
+      // affordance that can rescue a panel, so when it is off screen -- or
+      // sitting under the desktop shell's window-drag strip, which outranks
+      // anything we paint -- the keyboard has to be able to do the same thing.
+      // `0` is the established "reset the view" key.
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key === '0') {
+        event.preventDefault()
+        event.stopPropagation()
+        resetPlacement()
+        return
+      }
       if (event.key !== 'Escape' && event.key !== 'Esc') return
       const layer = layerRef.current
       const target = event.target
@@ -2467,13 +2482,14 @@ function FullscreenInputDock(props) {
     }
     // Escape is owned by the document capture phase rather than by an onKeyDown
     // on the textarea, so a caret inside the text and a press on the panel
-    // chrome behave alike. This is the only key the panel ever claims: every
-    // Enter variant is left to the textarea's native newline.
+    // chrome behave alike. Between them, Escape and Ctrl/Cmd+0 are the only keys
+    // the panel claims: every Enter variant is left to the textarea's native
+    // newline.
     document.addEventListener('keydown', onKeyDownCapture, true)
     return () => {
       document.removeEventListener('keydown', onKeyDownCapture, true)
     }
-  }, [open, close])
+  }, [open, close, resetPlacement])
 
   /** Chips photographed just before a write flattened them; consumed by the effect below. */
   const pendingRestoreRef = React.useRef(null)
@@ -2813,7 +2829,7 @@ function FullscreenInputDock(props) {
           onPointerMove: onHeadPointerMove,
           onPointerUp: onHeadPointerUp,
           onPointerCancel: onHeadPointerUp,
-          onDoubleClick: onHeadDoubleClick,
+          onDoubleClick: resetPlacement,
         },
         React.createElement('div', { className: 'dshfs-title' }, t('panel.title')),
         React.createElement('div', { className: 'dshfs-hint' }, hint),
