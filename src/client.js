@@ -231,7 +231,20 @@ const CSS = [
   // clicks. The mask's *look* lives on `.dshfs-scrim` inside it (see below);
   // `maskOpacity` / `maskFog` are applied there as inline styles, so the sheet
   // only carries the transparent baseline.
-  '.dshfs-layer{position:fixed;inset:0;z-index:2147483000;display:flex;',
+  // The layer has to sit above the host's page furniture and below its modals,
+  // and that window is narrow -- measured on a live client, not guessed: the
+  // modal root (`div[role=presentation]`, `position:fixed`, full viewport) is
+  // **1000**, while the sidebar (`aside`) is **995** and other furniture reaches
+  // **996**. So 996..999 is the entire usable range, and 999 takes its top.
+  //
+  // This used to be 2147483000, the usual "above everything" hack, and it was
+  // wrong twice over. It buried every confirmation and approval dialog behind
+  // the panel -- and not only once the layer portals to `body`: `z-index` only
+  // competes inside its own stacking context, and every element on this slot's
+  // chain is `z-index: auto` (the containment ancestor creates a context, but
+  // with an auto z-index it sits at the bottom of its parent's), so the huge
+  // value was deciding against the host's modals either way.
+  '.dshfs-layer{position:fixed;inset:0;z-index:999;display:flex;',
   'align-items:center;justify-content:center;padding:24px;box-sizing:border-box;',
   'background:transparent}',
   // The mask is a SIBLING of the pane, never its ancestor. `backdrop-filter`
@@ -250,19 +263,6 @@ const CSS = [
   // pane opts back in, because it still has to be usable. This also makes the wheel
   // forwarding above unnecessary in that mode: with no interception, the browser
   // scrolls whatever is under the pointer by itself.
-  // Escaping to `body` promotes the layer's z-index into the root stacking
-  // context, where it finally competes with the host's modals -- and the host's
-  // modal stack is 1000 (`div[role=presentation]`, position:fixed, full
-  // viewport), so the old 2147483000 buried every confirmation and approval
-  // dialog behind the panel.
-  //
-  // The window this value has to fit is narrow, and measured on the live client:
-  // **above** the sidebar (995) and the rest of the page furniture, **below** the
-  // modal root (1000). Anything in 996..999 works; 999 keeps it as high as it
-  // can go. The un-escaped layer keeps its huge value, because inside the slot
-  // that z-index is scoped to the slot's stacking context and never competes
-  // with the host at all.
-  '.dshfs-layer-escaped{z-index:999}',
   // The layer normally sits above everything the host draws, which is what a
   // modal mask is for. But the host's own lightbox portals to `body` as well,
   // and our z-index is the larger of the two -- a fact that only started to
@@ -2740,7 +2740,6 @@ function FullscreenInputDock(props) {
       className: [
         'dshfs-layer',
         settings.mask ? null : 'dshfs-layer-bare',
-        escapedSubtree ? 'dshfs-layer-escaped' : null,
         preview === null ? null : 'dshfs-layer-under',
       ].filter((name) => name !== null).join(' '),
       ref: layerRef,
